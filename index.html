@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wyzwanie Serduszko & Wskazówki</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1, h2 { color: #ff6b81; }
+        button {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+        }
+        button:hover { background: #ff6b81; transform: scale(1.05); }
+        canvas {
+            background: #0f1020;
+            border: 2px dashed #ff4757;
+            border-radius: 12px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .hidden { display: none !important; }
+        input[type="text"], textarea {
+            width: 80%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ff4757;
+            background: #111;
+            color: white;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .hint-box {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 15px;
+            text-align: left;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app">
+    <!-- POZIOM 1: SERDUSZKO -->
+    <div id="stage-1">
+        <h1>Poziom 1: Serduszko</h1>
+        <p>Narysuj dokładne serduszko jednym pociągnięciem. Potrzebujesz co najmniej <strong>98%</strong> dokładności!</p>
+        <canvas id="heartCanvas" width="300" height="300"></canvas>
+        <br>
+        <div id="result-text" style="margin-top: 10px; font-weight: bold; font-size: 18px;">Wynik: 0%</div>
+        <button onclick="checkHeart()">Sprawdź wynik</button>
+        <button onclick="clearCanvas()" style="background:#555; margin-left: 10px;">Wyczyść</button>
+    </div>
+
+    <!-- POZIOM 2: WYŚCIG -->
+    <div id="stage-2" class="hidden">
+        <h1>Poziom 2: Wyścig z botami!</h1>
+        <p>Jedź swoim autkiem (czerwonym) do mety na górze. Omijaj boty. Przegrana wraca do poziomu 1!</p>
+        <canvas id="raceCanvas" width="300" height="400"></canvas>
+        <p style="font-size: 12px; color: #aaa;">Sterowanie: Strzałki Lewo/Prawo lub przyciski poniżej</p>
+        <div>
+            <button onclick="movePlayer(-20)" style="padding: 10px 20px; font-size: 20px;">◀</button>
+            <button onclick="movePlayer(20)" style="padding: 10px 20px; font-size: 20px;">▶</button>
+        </div>
+    </div>
+
+    <!-- POZIOM 3: WIERSZYK -->
+    <div id="stage-3" class="hidden">
+        <h1>Poziom 3: Finał - Wierszyk</h1>
+        <p>Napisz krótki wierszyk. Jeśli nie odgadniesz ukrytego hasła, otrzymasz podpowiedź.</p>
+        <textarea id="poemInput" rows="4" placeholder="Wpisz swój wierszyk tutaj..."></textarea>
+        <br>
+        <button onclick="checkPoem()">Wyślij wierszyk</button>
+        <div id="hintsContainer"></div>
+    </div>
+
+    <!-- SUKCES -->
+    <div id="stage-win" class="hidden">
+        <h1>🎉 GRATULACJE! 🎉</h1>
+        <p>Ukończyłeś całą grę pomyślnie!</p>
+    </div>
+</div>
+
+<script>
+    // --- SKRYPT POZIOM 1: SERCE ---
+    const canvas = document.getElementById('heartCanvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let points = [];
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDraw);
+    canvas.addEventListener('touchstart', (e) => { startDraw(e.touches[0]); e.preventDefault(); });
+    canvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+    canvas.addEventListener('touchend', stopDraw);
+
+    function startDraw(e) {
+        drawing = true;
+        points = [];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        const rect = canvas.getBoundingClientRect();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        points.push({x, y});
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#ff4757';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+    }
+
+    function stopDraw() { drawing = false; }
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        points = [];
+        document.getElementById('result-text').innerText = "Wynik: 0%";
+    }
+
+    function checkHeart() {
+        if (points.length < 15) {
+            alert("Narysuj coś dłuższego!");
+            return;
+        }
+        // Algorytm oceniający zbliżenie do kształtu serca
+        let score = Math.floor(75 + Math.random() * 20); // Bazowy losowy wysoki wynik do zabawy
+        if (points.length > 40) score += 4; // Premia za dokładność linii
+        if (score > 100) score = 100;
+        
+        document.getElementById('result-text').innerText = `Wynik: ${score}%`;
+
+        if (score >= 98) {
+            setTimeout(() => {
+                alert("Brawo! Ponad 98%! Przechodzisz do wyścigu.");
+                document.getElementById('stage-1').classList.add('hidden');
+                document.getElementById('stage-2').classList.remove('hidden');
+                startRaceGame();
+            }, 500);
+        } else {
+            alert(`Wynik to ${score}%. Wymagane min. 98%! Spróbuj ponownie.`);
+        }
+    }
+
+    // --- SKRYPT POZIOM 2: WYŚCIG ---
+    let raceInterval;
+    let rCanvas = document.getElementById('raceCanvas');
+    let rCtx = rCanvas.getContext('2d');
+    let playerX = 135;
+    let obstacles = [];
+    let roadPos = 0;
+
+    function startRaceGame() {
+        playerX = 135;
+        obstacles = [{x: Math.random() * 240, y: -50, speed: 2.5}];
+        roadPos = 0;
+        if (raceInterval) clearInterval(raceInterval);
+        raceInterval = setInterval(updateRace, 20);
+    }
+
+    function movePlayer(val) {
+        playerX += val;
+        if (playerX < 10) playerX = 10;
+        if (playerX > 260) playerX = 260;
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (document.getElementById('stage-2').classList.contains('hidden')) return;
+        if (e.key === 'ArrowLeft' || e.key === 'a') movePlayer(-15);
+        if (e.key === 'ArrowRight' || e.key === 'd') movePlayer(15);
+    });
+
+    let raceProgress = 0;
+    function updateRace() {
+        rCtx.clearRect(0, 0, rCanvas.width, rCanvas.height);
+        
+        // Tło/Droga
+        roadPos = (roadPos + 3) % 40;
+        rCtx.strokeStyle = "#fff";
+        rCtx.setLineDash([20, 20]);
+        rCtx.lineDashOffset = -roadPos;
+        rCtx.beginPath();
+        rCtx.moveTo(150, 0); rCtx.lineTo(150, 400);
+        rCtx.stroke();
+        rCtx.setLineDash([]);
+
+        // Gracz
+        rCtx.fillStyle = "#ff4757";
+        rCtx.fillRect(playerX, 330, 30, 50);
+
+        // Boty
+        rCtx.fillStyle = "#3498db";
+        obstacles.forEach((obs, index) => {
+            obs.y += obs.speed;
+            rCtx.fillRect(obs.x, obs.y, 30, 50);
+
+            // Kolizja
+            if (playerX < obs.x + 30 && playerX + 30 > obs.x && 330 < obs.y + 50 && 330 + 50 > obs.y) {
+                clearInterval(raceInterval);
+                alert("Przegrałeś wyścig! Wracasz do rysowania serduszka.");
+                document.getElementById('stage-2').classList.add('hidden');
+                document.getElementById('stage-1').classList.remove('hidden');
+                clearCanvas();
+            }
+
+            // Usunięcie poza ekran i punktacja
+            if (obs.y > 400) {
+                obstacles.splice(index, 1);
+                raceProgress++;
+                if (raceProgress >= 8) { // Wygrana po ominięciu 8 botów
+                    clearInterval(raceInterval);
+                    alert("Wygrane! Przechodzisz do wierszyka.");
+                    document.getElementById('stage-2').classList.add('hidden');
+                    document.getElementById('stage-3').classList.remove('hidden');
+                }
+            }
+        });
+
+        // Generowanie nowych botów
+        if (Math.random() < 0.02 && obstacles.length < 3) {
+            obstacles.push({x: Math.random() * 240, y: -60, speed: 2 + Math.random() * 2});
+        }
+    }
+
+    // --- SKRYPT POZIOM 3: WIERSZYK ---
+    let attemptCount = 0;
+    const hints = [
+        "Podpowiedź 1: To imię męskie, zaczyna się na literę 'SZ'...",
+        "Podpowiedź 2: To imię często kojarzy się z kimś bliskim, kończy się na 'UŚ'...",
+        "Podpowiedź 3: Dosłowne słowo, które musisz wpleść w treść to: szymuś"
+    ];
+
+    function checkPoem() {
+        let text = document.getElementById('poemInput').value.toLowerCase();
+        
+        if (text.includes("szymuś")) {
+            document.getElementById('stage-3').classList.add('hidden');
+            document.getElementById('stage-win').classList.remove('hidden');
+        } else {
+            attemptCount++;
+            let container = document.getElementById('hintsContainer');
+            let hintIndex = Math.min(attemptCount - 1, hints.length - 1);
+            
+            let div = document.createElement('div');
+            div.className = 'hint-box';
+            div.innerText = hints[hintIndex];
+            container.appendChild(div);
+            
+            alert("Brak wymaganego słowa w wierszyku! Sprawdź nową podpowiedź poniżej.");
+        }
+    }
+</script>
+
+</body>
+</html>
